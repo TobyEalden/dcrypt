@@ -118,7 +118,7 @@ exports.hmac.createHmac = (hmac, key) ->
 ##X509
 dcrypt.x509 = X509
 exports.x509 = {}
-exports.x509.parse = (cert) ->
-  return (new X509).parse(cert)
+exports.x509.parse = (cert, format) ->
+  return (new X509).parse(cert, format)
 exports.x509.createCert = (args) ->
   return (new X509).createCert(args)
