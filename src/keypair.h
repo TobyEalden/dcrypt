@@ -8,6 +8,8 @@
 
 #include <openssl/evp.h>
 #include <openssl/err.h>
+#include <openssl/bn.h>
+#include <openssl/rsa.h>
 
 #ifndef WITH_ECDSA
 #include <openssl/ecdsa.h>

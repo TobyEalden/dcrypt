@@ -45,7 +45,37 @@ Handle<Value> KeyPair::New_RSA_KeyPair(const Arguments &args) {
   if (exp % 2 == 0) {
     return ThrowException(Exception::Error(String::New("Number must be odd")));
   }
-  RSA* rsa = RSA_generate_key(size, exp, NULL, NULL);
+
+  RSA* rsa;
+#ifndef OPENSSL_NO_DEPRECATED
+  /* In openssl 0.9.7, RSA_generate_key is all we have. */
+  rsa = RSA_generate_key(size, exp, NULL, NULL);
+#else
+  /* In openssl 0.9.8, RSA_generate_key is deprecated. */
+  {
+    bool gen_success = false;
+    BIGNUM *e = BN_new();
+    if (e) {
+      if (BN_set_word(e, exp)) {
+        rsa = RSA_new();
+        if (rsa) {
+          if (RSA_generate_key_ex(rsa, size, e, NULL) != -1) {
+            gen_success = true;
+          }
+        }
+      }
+    }
+    if (e)
+      BN_free(e);
+    if(!gen_success) {
+      if (rsa) {
+        RSA_free(rsa);
+        rsa = 0;
+      }
+    }
+  }
+#endif
+
   if (!rsa) {
     return ThrowException(Exception::Error(String::New("Error setting RSA key")));
   }

@@ -297,7 +297,7 @@ Handle<Value> DX509::createCert(const Arguments &args) {
 int DX509::make_cert(X509 **x509p, int type, long bits, EVP_PKEY **pkeyp, int days) {
   X509 *x;
   EVP_PKEY *pk;
-  RSA *rsa;
+  RSA *rsa = NULL;
   X509_NAME *name = NULL;
 
   //Use the key we're given, if we aren't given one then allocate
@@ -318,7 +318,34 @@ int DX509::make_cert(X509 **x509p, int type, long bits, EVP_PKEY **pkeyp, int da
     x = *x509p;
   }
 
-  rsa=RSA_generate_key(bits, RSA_F4, NULL, NULL);
+#ifndef OPENSSL_NO_DEPRECATED
+  /* In openssl 0.9.7, RSA_generate_key is all we have. */
+  rsa = RSA_generate_key(bits, RSA_F4, NULL, NULL);
+#else
+  /* In openssl 0.9.8, RSA_generate_key is deprecated. */
+  {
+    bool gen_success = false;
+    BIGNUM *e = BN_new();
+    if (e) {
+      if (BN_set_word(e, RSA_F4)) {
+        rsa = RSA_new();
+        if (rsa) {
+          if (RSA_generate_key_ex(rsa, bits, e, NULL) != -1) {
+            gen_success = true;
+          }
+        }
+      }
+    }
+    if (e)
+      BN_free(e);
+    if(!gen_success) {
+      if (rsa)
+        RSA_free(rsa);
+      return -1;
+    }
+  }
+#endif
+
   if (!EVP_PKEY_assign_RSA(pk, rsa)) {
     return -1;
   }

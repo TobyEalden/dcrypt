@@ -448,7 +448,7 @@ Decipher::~Decipher() {
 // local decrypt final without strict padding check
 // to work with php mcrypt
 // see http://www.mail-archive.com/openssl-dev@openssl.org/msg19927.html
-int local_EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx,
+int Decipher::local_EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx,
                               unsigned char *out,
                               int *outl) {
   int i,b;
