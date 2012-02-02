@@ -27,18 +27,36 @@ Handle<Value> DX509::parseCert(const Arguments &args) {
   DX509 *dx509 = ObjectWrap::Unwrap<DX509>(args.This());
 
   ASSERT_IS_STRING_OR_BUFFER(args[0]);
+  int format = 2; /* default to pem */
+  char formatUtf[7];
+  if(args.Length() > 1 && !args[1].IsEmpty()) {
+    Local<String> formatString = args[1]->ToString();
+    if(formatString->Utf8Length() > 6)
+      return ThrowException(Exception::TypeError(String::New("Invalid format specification")));
+
+    formatString->WriteUtf8(formatUtf, 6);
+    if(!strcmp(formatUtf, "pem"))
+       format = 2;
+    else if(!strcmp(formatUtf, "base64"))
+      format = 1;
+    else if(!strcmp(formatUtf, "der"))
+      format = 0;
+    else
+      return ThrowException(Exception::TypeError(String::New("Invalid format specification")));
+  }
 
   ssize_t cert_len = DecodeBytes(args[0], BINARY);
   char* cert_buf = new char[cert_len];
   ssize_t written = DecodeWrite(cert_buf, cert_len, args[0], BINARY);
   assert(cert_len = written);
-  //Clean me up
-  //load_cert is loading into the dx509 private x509, but is also returning the same object it should only do the former
-  int ok = dx509->load_cert(cert_buf, cert_len, 1, &dx509->x509_);
-  X509* x = dx509->x509_;
+
+  int ok = dx509->load_cert(cert_buf, cert_len, format, &dx509->x509_);
+  if(!ok)
+    return ThrowException(Exception::Error(String::New("Unable to read certificate")));
 
   EVP_PKEY *pkey;
-  pkey = X509_get_pubkey(x);
+  X509* x;
+  pkey = X509_get_pubkey((x = dx509->x509_));
 
   //node symbols
   Persistent<String> serial_symbol    = NODE_PSYMBOL("serial");
@@ -226,28 +244,37 @@ Handle<Value> DX509::parseCert(const Arguments &args) {
   return scope.Close(info);
 }
 
+/* format values:
+ * 0: DER-encoded x509v3
+ * 1: base64 x509v3
+ * 2: PEM
+ */
 int DX509::load_cert(char *cert, int cert_len, int format, X509** x509p) {
   BIO *bp = BIO_new_mem_buf(cert, cert_len);
   X509* x;
-  if ((x509p == NULL) || (*x509p == NULL)) {
-    x = X509_new();
-  } else {
-    x = *x509p;
-  }
-
-  if (format == 0) {
-    x = d2i_X509_bio(bp, NULL);
-  } else if (format == 1) {
+  if (format > 1) {
     x = PEM_read_bio_X509_AUX(bp, NULL, NULL, NULL);
+  } else {
+    if (format == 1) {
+      BIO *b64;
+      ASN1_VALUE *val;
+      if(!(b64 = BIO_new(BIO_f_base64()))) {
+        ASN1err(ASN1_F_B64_READ_ASN1,ERR_R_MALLOC_FAILURE);
+        return 0;
+      }
+      bp = BIO_push(b64, bp);
+    }
+    x = d2i_X509_bio(bp, NULL);
   }
 
   if (x == NULL) {
     // ERR_print_errors(stderr);
+    return 0;
   }
   if (bp != NULL) {
     BIO_free(bp);
   }
-  x509_ = x;
+  *x509p = x;
   return 1;
 }
 
