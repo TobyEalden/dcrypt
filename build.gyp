@@ -7,6 +7,7 @@
         'src/decipher.cc',
         'src/drsa.cc',
         'src/dx509.cc',
+        'src/dx509crl.cc',
         'src/encode.cc',
         'src/hash.cc',
         'src/hmac.cc',

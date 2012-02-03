@@ -12,6 +12,7 @@ Decipher = _bindings.Decipher
 Rsa = _bindings.Rsa
 Hmac = _bindings.Hmac
 X509 = _bindings.X509
+X509CRL = _bindings.X509CRL
 
 dcrypt = {}
 
@@ -117,8 +118,11 @@ exports.hmac.createHmac = (hmac, key) ->
 
 ##X509
 dcrypt.x509 = X509
+dcrypt.x509CRL = X509CRL
 exports.x509 = {}
-exports.x509.parse = (cert, format) ->
-  return (new X509).parse(cert, format)
+exports.x509.parseCert = (cert, format) ->
+  return (new X509).parseCert(cert, format)
+exports.x509.parseCrl = (crl, format) ->
+  return (new X509CRL).parseCrl(crl, format)
 exports.x509.createCert = (args) ->
   return (new X509).createCert(args)
