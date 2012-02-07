@@ -27,6 +27,7 @@ class Verify : node::ObjectWrap {
     bool VerifyInit(const char *verifyType);
     int VerifyUpdate(char *data, int len);
     int VerifyFinal(char *key_pem, int key_pemLen, unsigned char *sig, int sigLen);
+    int VerifyFinal(EVP_PKEY *pkey, unsigned char *sig, int sigLen);
     Verify();
 
   protected:

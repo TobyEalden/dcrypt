@@ -1,4 +1,5 @@
 #include "verify.h"
+#include "dx509.h"
 
 Persistent<FunctionTemplate> Verify::constructor;
 
@@ -112,69 +113,108 @@ int Verify::VerifyUpdate(char* data, int len) {
 
 Handle<Value> Verify::VerifyFinal(const Arguments& args) {
   HandleScope scope;
+  
+  if(args.Length() < 2) {
+    Local<Value> exception = Exception::TypeError(String::New("Too few arguments"));
+    return ThrowException(exception);
+  }
 
   Verify *verify = ObjectWrap::Unwrap<Verify>(args.This());
-
-  ASSERT_IS_STRING_OR_BUFFER(args[0]);
-  ssize_t klen = DecodeBytes(args[0], BINARY);
-
-  if (klen < 0) {
-    Local<Value> exception = Exception::TypeError(String::New("Bad argument"));
-    return ThrowException(exception);
-  }
-
-  char* kbuf = new char[klen];
-  ssize_t kwritten = DecodeWrite(kbuf, klen, args[0], BINARY);
-  assert(kwritten == klen);
-
+  int r=-1;
+    
   ASSERT_IS_STRING_OR_BUFFER(args[1]);
   ssize_t hlen = DecodeBytes(args[1], BINARY);
-
+  
   if (hlen < 0) {
-    delete [] kbuf;
     Local<Value> exception = Exception::TypeError(String::New("Bad argument"));
     return ThrowException(exception);
   }
-
+  
   unsigned char* hbuf = new unsigned char[hlen];
   ssize_t hwritten = DecodeWrite((char *)hbuf, hlen, args[1], BINARY);
   assert(hwritten == hlen);
   unsigned char* dbuf;
   int dlen;
-
-  int r=-1;
-
-  if (args.Length() == 2 || !args[2]->IsString()) {
-    // Binary
-    r = verify->VerifyFinal(kbuf, klen, hbuf, hlen);
+  
+  if(DX509::IsInstance(args[0])) {
+    X509 *x509 = ((DX509 *)ObjectWrap::Unwrap<DX509>(args[0]->ToObject()))->getNativeX509();
+    if(!x509) {
+      Local<Value> exception = Exception::TypeError(String::New("Bad certificate argument"));
+      return ThrowException(exception);
+    }
+    EVP_PKEY *pkey =X509_get_pubkey(x509);
+    if(!pkey) {
+      Local<Value> exception = Exception::TypeError(String::New("Unable to get public key from certificate"));
+      return ThrowException(exception);
+    }
+    if (args.Length() == 2 || !args[2]->IsString()) {
+      // Binary
+      r = verify->VerifyFinal(pkey, hbuf, hlen);
+    } else {
+      String::Utf8Value encoding(args[2]->ToString());
+      if (strcasecmp(*encoding, "hex") == 0) {
+        // Hex encoding
+        HexDecode(hbuf, hlen, (char **)&dbuf, &dlen);
+        r = verify->VerifyFinal(pkey, dbuf, dlen);
+        delete [] dbuf;
+      } else if (strcasecmp(*encoding, "base64") == 0) {
+        // Base64 encoding
+        unbase64(hbuf, hlen, (char **)&dbuf, &dlen);
+        r = verify->VerifyFinal(pkey, dbuf, dlen);
+        delete [] dbuf;
+      } else if (strcasecmp(*encoding, "binary") == 0) {
+        r = verify->VerifyFinal(pkey, hbuf, hlen);
+      } else {
+        fprintf(stderr, "node-crypto : Verify .verify encoding "
+                "can be binary, hex or base64\n");
+      }
+    }
   } else {
-    String::Utf8Value encoding(args[2]->ToString());
-    if (strcasecmp(*encoding, "hex") == 0) {
-      // Hex encoding
-      HexDecode(hbuf, hlen, (char **)&dbuf, &dlen);
-      r = verify->VerifyFinal(kbuf, klen, dbuf, dlen);
-       // r = verify->VerifyFinal(kbuf, klen, hbuf, hlen);
-       delete [] dbuf;
-    } else if (strcasecmp(*encoding, "base64") == 0) {
-      // Base64 encoding
-      unbase64(hbuf, hlen, (char **)&dbuf, &dlen);
-      r = verify->VerifyFinal(kbuf, klen, dbuf, dlen);
-      delete [] dbuf;
-    } else if (strcasecmp(*encoding, "binary") == 0) {
+
+    ASSERT_IS_STRING_OR_BUFFER(args[0]);
+    ssize_t klen = DecodeBytes(args[0], BINARY);
+
+    if (klen < 0) {
+      Local<Value> exception = Exception::TypeError(String::New("Bad argument"));
+      return ThrowException(exception);
+    }
+
+    char* kbuf = new char[klen];
+    ssize_t kwritten = DecodeWrite(kbuf, klen, args[0], BINARY);
+    assert(kwritten == klen);
+
+    if (args.Length() == 2 || !args[2]->IsString()) {
+      // Binary
       r = verify->VerifyFinal(kbuf, klen, hbuf, hlen);
     } else {
-      fprintf(stderr, "node-crypto : Verify .verify encoding "
+      String::Utf8Value encoding(args[2]->ToString());
+      if (strcasecmp(*encoding, "hex") == 0) {
+        // Hex encoding
+        HexDecode(hbuf, hlen, (char **)&dbuf, &dlen);
+        r = verify->VerifyFinal(kbuf, klen, dbuf, dlen);
+        // r = verify->VerifyFinal(kbuf, klen, hbuf, hlen);
+        delete [] dbuf;
+      } else if (strcasecmp(*encoding, "base64") == 0) {
+        // Base64 encoding
+        unbase64(hbuf, hlen, (char **)&dbuf, &dlen);
+        r = verify->VerifyFinal(kbuf, klen, dbuf, dlen);
+        delete [] dbuf;
+      } else if (strcasecmp(*encoding, "binary") == 0) {
+        r = verify->VerifyFinal(kbuf, klen, hbuf, hlen);
+      } else {
+        fprintf(stderr, "node-crypto : Verify .verify encoding "
                       "can be binary, hex or base64\n");
+      }
     }
+    delete [] kbuf;
+    delete [] hbuf;
   }
 
-  delete [] kbuf;
-  delete [] hbuf;
 
-  return scope.Close(Integer::New(r));
+  return scope.Close(Boolean::New(r));
 }
 
-int Verify::VerifyFinal(char* key_pem, int key_pemLen, unsigned char* sig, int siglen) {
+int Verify::VerifyFinal(char* key_pem, int key_pemLen, unsigned char* sig, int sigLen) {
   if (!initialised_) return 0;
 
   BIO *bp = NULL;
@@ -225,11 +265,14 @@ int Verify::VerifyFinal(char* key_pem, int key_pemLen, unsigned char* sig, int s
     ERR_print_errors_fp(stderr);
     return 0;
   }
-
-  int r = EVP_VerifyFinal(mdctx, sig, siglen, pkey);
-
+  int r = VerifyFinal(pkey, sig, sigLen);
   EVP_PKEY_free(pkey);
   BIO_free(bp);
+  return r;
+}
+
+int Verify::VerifyFinal(EVP_PKEY *pkey, unsigned char *sig, int sigLen) {
+  int r = EVP_VerifyFinal(mdctx, sig, sigLen, pkey);
   EVP_MD_CTX_cleanup(mdctx);
   initialised_ = false;
   return r;
