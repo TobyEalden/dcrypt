@@ -32,6 +32,8 @@ class DX509: node::ObjectWrap {
     // int parseCert();
     int load_cert(char *cert, int cert_len, int format, X509** x509p);
     DX509();
+    static bool IsInstance(Handle<Value> inst);
+    X509 *getNativeX509();
 
   protected:
     static Handle<Value> parseCert(const Arguments &args);

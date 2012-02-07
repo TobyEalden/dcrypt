@@ -1,6 +1,10 @@
 #include "dx509.h"
 Persistent<FunctionTemplate> DX509::constructor;
 
+bool DX509::IsInstance(Handle<Value> inst) {
+  return constructor->HasInstance(inst);
+}
+
 void DX509::Initialize(Handle<Object> target) {
   HandleScope scope;
 
@@ -73,7 +77,8 @@ Handle<Value> DX509::parseCert(const Arguments &args) {
   Persistent<String> pubkey_symbol = NODE_PSYMBOL("public_key");
   Persistent<String> pubkey_pem_symbol = NODE_PSYMBOL("public_key_pem");
   Persistent<String> public_key_algo = NODE_PSYMBOL("public_key_algo");
-  Local<Object> info = Object::New();
+
+  Local<Object> info = args.This();
   
   //subject name
   char *details = X509_NAME_oneline(X509_get_subject_name(x), 0, 0);
@@ -394,4 +399,8 @@ int DX509::make_cert(X509 **x509p, int type, long bits, EVP_PKEY **pkeyp, int da
   *x509p = x;
   *pkeyp = pk;
   return 1;
+}
+
+X509 *DX509::getNativeX509() {
+	return x509_;
 }
