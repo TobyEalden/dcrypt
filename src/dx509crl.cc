@@ -62,7 +62,8 @@ Handle<Value> DX509CRL::parseCrl(const Arguments &args) {
   Persistent<String> last_update_symbol    = NODE_PSYMBOL("last_update");
   Persistent<String> next_update_symbol    = NODE_PSYMBOL("next_update");
   Persistent<String> signature_symbol      = NODE_PSYMBOL("signature");
-  Local<Object> info = Object::New();
+
+  Local<Object> info = args.This();
 
   //issuer name
   X509_NAME *issuer = X509_CRL_get_issuer(x);
