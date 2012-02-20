@@ -5,7 +5,7 @@
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := _dcrypt 
+LOCAL_MODULE := dcrypt 
 
 LOCAL_CFLAGS := \
 	-DOPENSSL_NO_DEPRECATED \
