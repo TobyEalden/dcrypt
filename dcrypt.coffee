@@ -1,4 +1,4 @@
-_bindings = require './native/dcrypt'
+_bindings = require './compiled/' + process.platform + '/' + process.arch + '/dcrypt'
 
 #OpenSSL bindings for Node.js. This module extends what is in node-crypto bringing much needed additional functionality.
 Random = _bindings.Random
