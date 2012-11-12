@@ -9,6 +9,14 @@
 #include <v8.h>
 #include <node.h>
 
+#if defined(_WIN32) || defined(_WIN64) 
+	#define snprintf _snprintf 
+	#define vsnprintf _vsnprintf 
+	#define strcasecmp _stricmp 
+	#define strncasecmp _strnicmp
+	#define uint unsigned int
+#endif
+
 using namespace v8;
 using namespace node;
 
