@@ -113,10 +113,10 @@ Handle<Value> DX509CRL::parseCrl(const Arguments &args) {
   for (int i=0; i<n1; i++) {
     BIO_printf(sig_bio, "%02x%s", s[i], ((i+1) == n1) ? "":":");
   }
-  char sig_buf [n1*3];
+  char* sig_buf = new char[n1*3];
   BIO_read(sig_bio, sig_buf, sizeof(sig_buf)-1);
   info->Set(signature_symbol, String::New(sig_buf));
-
+  delete [] sig_buf;
   delete [] crl_buf;
   if (bio != NULL) BIO_free(bio);
   return scope.Close(info);

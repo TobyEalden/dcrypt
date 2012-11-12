@@ -151,10 +151,11 @@ Handle<Value> DX509::parseCert(const Arguments &args) {
     for (int i=0; i<n; i++) {
       BIO_printf(key_info_bio, "%02x%s", m[i],((i+1) == n) ? "":":");
     }
-    char key_info_buf[buf_len*4];
+    char* key_info_buf = new char[buf_len*4];
     BIO_read(key_info_bio, key_info_buf, sizeof(key_info_buf)-1);
     pub_str = String::New(key_info_buf);
     OPENSSL_free(m);
+    delete[] key_info_buf;
     
     RSA_free(rsa);
   } else if (pkey->type == EVP_PKEY_EC) {
@@ -186,9 +187,10 @@ Handle<Value> DX509::parseCert(const Arguments &args) {
   for (int i=0; i<n1; i++) {
     BIO_printf(sig_bio, "%02x%s", s[i], ((i+1) == n1) ? "":":");
   }
-  char sig_buf [n1*3];
+  char* sig_buf = new char[n1*3];
   BIO_read(sig_bio, sig_buf, sizeof(sig_buf)-1);
   info->Set(signature_symbol, String::New(sig_buf));
+  delete[] sig_buf;
   
   //finger print
   int j;
@@ -298,6 +300,8 @@ int DX509::update_buf_len(const BIGNUM *b, size_t *pbuflen) {
 		return 0;
 	if (*pbuflen < (i = (size_t)BN_num_bytes(b)))
 			*pbuflen = i;
+
+  return *pbuflen;
 }
 
 Handle<Value> DX509::createCert(const Arguments &args) {
