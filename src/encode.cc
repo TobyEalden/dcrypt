@@ -26,9 +26,13 @@ Handle<Value> Encode::New(const Arguments &args) {
 }
 
 Handle<Value> Encode::EncodeBase58(const Arguments &args) {
+	HandleScope scope;
+	return scope.Close(args.This());
 }
 
 Handle<Value> Encode::DecodeBase58(const Arguments &args) {
+	HandleScope scope;
+	return scope.Close(args.This());
 }
 
 Encode::Encode() : ObjectWrap() {
