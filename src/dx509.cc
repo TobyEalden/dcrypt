@@ -151,8 +151,9 @@ Handle<Value> DX509::parseCert(const Arguments &args) {
     for (int i=0; i<n; i++) {
       BIO_printf(key_info_bio, "%02x%s", m[i],((i+1) == n) ? "":":");
     }
-    char* key_info_buf = new char[buf_len*4];
-    BIO_read(key_info_bio, key_info_buf, sizeof(key_info_buf)-1);
+    size_t key_info_buf_len = buf_len*4;
+    char* key_info_buf = new char[key_info_buf_len];
+    BIO_read(key_info_bio, key_info_buf, key_info_buf_len-1);
     pub_str = String::New(key_info_buf);
     OPENSSL_free(m);
     delete[] key_info_buf;
@@ -187,8 +188,9 @@ Handle<Value> DX509::parseCert(const Arguments &args) {
   for (int i=0; i<n1; i++) {
     BIO_printf(sig_bio, "%02x%s", s[i], ((i+1) == n1) ? "":":");
   }
-  char* sig_buf = new char[n1*3];
-  BIO_read(sig_bio, sig_buf, sizeof(sig_buf)-1);
+  size_t sig_buf_len = n1*3;
+  char* sig_buf = new char[sig_buf_len];
+  BIO_read(sig_bio, sig_buf, sig_buf_len-1);
   info->Set(signature_symbol, String::New(sig_buf));
   delete[] sig_buf;
   
