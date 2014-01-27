@@ -1,6 +1,6 @@
 #include "parseEncoding.h"
 
-enum encoding ParseEncoding(Handle<Value> encoding_v, enum encoding _default) {
+enum encoding node::ParseEncoding(Handle<Value> encoding_v, enum encoding _default) {
   HandleScope scope;
 
   if (!encoding_v->IsString()) return _default;
